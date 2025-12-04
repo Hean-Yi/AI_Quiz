@@ -44,3 +44,6 @@ client/android/app/src/main/res/xml/config.xml
 
 # Capacitor local config
 capacitor.config.json.timestamp
+
+# Documentation
+AGENTS.md
