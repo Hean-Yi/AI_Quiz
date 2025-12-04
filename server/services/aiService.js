@@ -380,7 +380,7 @@ export const generateQuiz = async (pdfText, types, quantity, customRequirements,
     });
 };
 
-const chatWithAI = async (question, userQuery, config, pdfId) => {
+export const chatWithAI = async (question, userQuery, config, pdfId) => {
     if (!config.apiKey) {
         throw new Error('API Key is required');
     }
@@ -405,8 +405,5 @@ const chatWithAI = async (question, userQuery, config, pdfId) => {
     return await service.chatWithAI({ question, ragContext }, userQuery);
 };
 
-module.exports = {
-    generateQuiz,
-    chatWithAI
-};
+
 
