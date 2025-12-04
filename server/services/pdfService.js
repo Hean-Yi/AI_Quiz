@@ -1,12 +1,12 @@
-const fs = require('fs');
-const pdf = require('pdf-parse');
+import fs from 'fs';
+import pdf from 'pdf-parse/lib/pdf-parse.js';
 
 /**
  * 解析 PDF 文件内容
  * @param {string} filePath - 上传文件的本地路径
  * @returns {Promise<Object>} - 返回包含文本内容和元数据的对象
  */
-const parsePdf = async (filePath) => {
+export const parsePdf = async (filePath) => {
     try {
         const dataBuffer = fs.readFileSync(filePath);
         
@@ -55,8 +55,4 @@ const splitTextToParagraphs = (text) => {
         .split(/\n\s*\n/) // 按空行分割
         .map(p => p.trim())
         .filter(p => p.length > 0); // 移除空段落
-};
-
-module.exports = {
-    parsePdf
 };

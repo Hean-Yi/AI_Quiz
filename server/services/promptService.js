@@ -1,5 +1,9 @@
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DEFAULT_PROMPT_FILE = path.join(DATA_DIR, 'prompt_template.txt');
@@ -21,7 +25,7 @@ const ensureDir = async () => {
     }
 };
 
-const getPrompt = async (type = 'default') => {
+export const getPrompt = async (type = 'default') => {
     try {
         await ensureDir();
         const filename = PROMPT_FILES[type] || PROMPT_FILES['default'];
@@ -43,7 +47,7 @@ const getPrompt = async (type = 'default') => {
     }
 };
 
-const getAllPrompts = async () => {
+export const getAllPrompts = async () => {
     const prompts = {};
     for (const type of Object.keys(PROMPT_FILES)) {
         prompts[type] = await getPrompt(type);
@@ -51,7 +55,7 @@ const getAllPrompts = async () => {
     return prompts;
 };
 
-const savePrompt = async (content, type = 'default') => {
+export const savePrompt = async (content, type = 'default') => {
     try {
         await ensureDir();
         const filename = PROMPT_FILES[type] || PROMPT_FILES['default'];
@@ -63,10 +67,4 @@ const savePrompt = async (content, type = 'default') => {
         console.error(`Error saving prompt for type ${type}:`, error);
         throw new Error('Failed to save prompt file');
     }
-};
-
-module.exports = {
-    getPrompt,
-    getAllPrompts,
-    savePrompt
 };

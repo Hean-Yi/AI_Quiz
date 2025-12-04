@@ -1,13 +1,18 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 // 导入服务
-const pdfService = require('./services/pdfService');
-const promptService = require('./services/promptService'); // 新增
-const aiService = require('./services/aiService'); // 新增
+import * as pdfService from './services/pdfService.js';
+import * as promptService from './services/promptService.js';
+import * as aiService from './services/aiService.js';
+
+// 模拟 __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;

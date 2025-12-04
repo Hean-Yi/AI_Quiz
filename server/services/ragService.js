@@ -1,8 +1,12 @@
-const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
-const { HNSWLib } = require("@langchain/community/vectorstores/hnswlib");
-const { OpenAIEmbeddings } = require("@langchain/openai");
-const path = require('path');
-const fs = require('fs');
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { HNSWLib } from "@langchain/community/vectorstores/hnswlib";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const VECTOR_STORE_PATH = path.join(__dirname, '../data/vectors');
 
@@ -74,7 +78,7 @@ const getOrCreateIndex = async (pdfId, pages, config) => {
  * @param {Object} config 
  * @param {Array} pages - 如果需要新建索引，必须传入 pages
  */
-const retrieveContext = async (pdfId, query, config, pages = []) => {
+export const retrieveContext = async (pdfId, query, config, pages = []) => {
     try {
         const vectorStore = await getOrCreateIndex(pdfId, pages, config);
         
@@ -93,6 +97,3 @@ const retrieveContext = async (pdfId, query, config, pages = []) => {
     }
 };
 
-module.exports = {
-    retrieveContext
-};

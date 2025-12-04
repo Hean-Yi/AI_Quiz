@@ -1,6 +1,6 @@
-const OpenAI = require('openai');
-const JSON5 = require('json5');
-const ragService = require('./ragService');
+import OpenAI from 'openai';
+import JSON5 from 'json5';
+import * as ragService from './ragService.js';
 
 /**
  * AI 服务工厂
@@ -182,7 +182,7 @@ ${context.ragContext || "无"}
 /**
  * 统一对外接口
  */
-const generateQuiz = async (pdfText, types, quantity, customRequirements, config, promptTemplates, pdfIds, pages, typeCounts, persona = {}) => {
+export const generateQuiz = async (pdfText, types, quantity, customRequirements, config, promptTemplates, pdfIds, pages, typeCounts, persona = {}) => {
     if (!config.apiKey) {
         throw new Error('API Key is required');
     }
@@ -409,3 +409,4 @@ module.exports = {
     generateQuiz,
     chatWithAI
 };
+
