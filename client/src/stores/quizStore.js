@@ -8,7 +8,7 @@ export const useQuizStore = defineStore('quiz', () => {
     const score = ref(0);
     const mistakes = ref([]);
     const history = ref([]); // 简单的历史记录 { date, score, total }
-    const currentPdf = ref(null); // 存储当前 PDF 信息 { pdfId, originalName, ... }
+    const currentPdf = ref(null); // 存储当前 PDF 信息 { pdfId, originalName, localPath, ... }
     const currentPdfList = ref([]); // 新增：存储当前所有上传的 PDF 列表
     const pendingFile = ref(null); // 待处理的外部文件 (Intent 传入)
 

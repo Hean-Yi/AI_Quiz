@@ -68,7 +68,7 @@
             </div>
 
             <h3 class="text-base font-bold text-gray-800 mb-4 leading-relaxed line-clamp-2">
-                {{ mistake.content }}
+                <span v-html="renderMarkdown(mistake.content)"></span>
             </h3>
 
             <!-- 简略信息 -->
@@ -108,7 +108,7 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
                 <div>
                     <h3 class="text-lg font-bold text-gray-800 leading-relaxed mb-4">
-                        {{ currentMistake.content }}
+                        <span v-html="renderMarkdown(currentMistake.content)"></span>
                     </h3>
                     
                     <!-- 选项展示 -->
@@ -116,15 +116,15 @@
                         <div v-for="(opt, idx) in currentMistake.options" :key="idx">
                             <div v-if="isCorrect(opt, currentMistake)" class="p-3 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2 text-sm font-medium text-green-800">
                                 <i class="fa-solid fa-circle-check text-green-500"></i>
-                                {{ opt }}
+                                <span v-html="renderMarkdown(opt)"></span>
                             </div>
                             <div v-else-if="isUserWrong(opt, currentMistake)" class="p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-sm font-medium text-red-800">
                                 <i class="fa-solid fa-circle-xmark text-red-500"></i>
-                                {{ opt }}
+                                <span v-html="renderMarkdown(opt)"></span>
                                 <span class="text-[10px] bg-red-100 px-1.5 py-0.5 rounded ml-auto">你的选择</span>
                             </div>
                             <div v-else class="p-3 rounded-xl bg-white border border-gray-100 text-sm text-gray-500">
-                                {{ opt }}
+                                <span v-html="renderMarkdown(opt)"></span>
                             </div>
                         </div>
                     </div>
@@ -136,7 +136,7 @@
                         <i class="fa-solid fa-lightbulb text-amber-400"></i>
                         <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">解析</h4>
                     </div>
-                    <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{{ currentMistake.explanation }}</p>
+                    <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap" v-html="renderMarkdown(currentMistake.explanation)"></p>
                 </div>
             </div>
 
@@ -163,6 +163,7 @@
 import { ref, computed } from 'vue';
 import { useQuizStore } from '../stores/quizStore';
 import { useRouter } from 'vue-router';
+import { renderMarkdown } from '../utils/markdown';
 import AiChatModal from '../components/AiChatModal.vue';
 
 const quizStore = useQuizStore();

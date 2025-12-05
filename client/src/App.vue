@@ -100,7 +100,7 @@ watch(() => route.name, (to, from) => {
 </script>
 
 <template>
-  <div class="w-full max-w-md mx-auto min-h-screen flex flex-col relative font-sans overflow-hidden bg-gray-50/50" :class="{'pb-24': showTabBar}">
+  <div class="w-full max-w-md mx-auto min-h-screen flex flex-col relative font-sans overflow-hidden bg-gray-50/50 pt-[env(safe-area-inset-top)]" :class="{'pb-24': showTabBar}">
     
     <!-- 顶部导航栏 -->
     <header v-if="showHeader" class="px-6 py-4 flex justify-between items-center sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300">

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import * as pdfService from './services/pdfService.js';
 import * as promptService from './services/promptService.js';
 import * as aiService from './services/aiService.js';
+import * as ragService from './services/ragService.js';
 
 // 模拟 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -141,6 +142,15 @@ app.post('/api/quiz/generate', async (req, res) => {
                 // 为页面添加 source 标识，方便 RAG 区分
                 const taggedPages = parsedData.pages.map(p => `[Source: ${pdfId}] ${p}`);
                 allPages = [...allPages, ...taggedPages];
+
+                // 立即创建向量索引并删除文件 (释放服务器空间)
+                try {
+                    await ragService.getOrCreateIndex(pdfId, parsedData.pages, { apiKey, baseURL });
+                    fs.unlinkSync(filePath);
+                    console.log(`Processed and deleted file: ${pdfId}`);
+                } catch (e) {
+                    console.error(`Error processing/deleting ${pdfId}:`, e);
+                }
             }
         }
 
@@ -173,6 +183,20 @@ app.post('/api/quiz/generate', async (req, res) => {
             typeCounts, // 传入 typeCounts
             { domain, role, difficulty } // 传入 Persona 对象
         );
+
+        // 6. 清理上传的 PDF 文件 (释放服务器空间)
+        // 仅在生成成功后删除，如果生成失败保留以便排查(或者也删除?)
+        // 用户要求: "在每个用户完成请求, 不再有预览pdf的需要的时间释放掉占用"
+        // 此时前端已经缓存了文件，或者不需要预览了。
+        for (const pdfId of pdfIds) {
+            const filePath = path.join(uploadDir, pdfId);
+            if (fs.existsSync(filePath)) {
+                fs.unlink(filePath, (err) => {
+                    if (err) console.error(`Failed to delete file ${pdfId}:`, err);
+                    else console.log(`Deleted temporary file: ${pdfId}`);
+                });
+            }
+        }
 
         res.json({
             success: true,

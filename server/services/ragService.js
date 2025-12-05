@@ -21,7 +21,7 @@ if (!fs.existsSync(VECTOR_STORE_PATH)) {
  * @param {Array} pages - PDF 页面文本数组
  * @param {Object} config - AI 配置 (apiKey, baseURL)
  */
-const getOrCreateIndex = async (pdfId, pages, config) => {
+export const getOrCreateIndex = async (pdfId, pages, config) => {
     const saveDir = path.join(VECTOR_STORE_PATH, pdfId);
     const embeddings = new OpenAIEmbeddings({
         openAIApiKey: config.apiKey,

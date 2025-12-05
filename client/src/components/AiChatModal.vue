@@ -1,6 +1,9 @@
 <template>
     <div v-if="visible" class="fixed inset-0 z-[70] flex flex-col justify-end items-center bg-black/20 backdrop-blur-sm animate-fade-in" @click.self="close">
-        <div class="bg-white w-full max-w-md h-[85vh] rounded-t-[32px] shadow-2xl flex flex-col animate-slide-up overflow-hidden">
+        <div 
+            class="bg-white w-full max-w-md rounded-t-[32px] shadow-2xl flex flex-col animate-slide-up overflow-hidden transition-all duration-200"
+            :style="{ height: `calc(85vh - ${keyboardHeight}px)` }"
+        >
             <!-- 顶部 -->
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-3">
@@ -80,9 +83,9 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue';
+import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
-import { marked } from 'marked';
+import { renderMarkdown } from '../utils/markdown';
 
 const props = defineProps({
     visible: Boolean,
@@ -96,6 +99,30 @@ const chatInput = ref('');
 const chatMessages = ref([]);
 const isChatting = ref(false);
 const chatContainer = ref(null);
+const keyboardHeight = ref(0);
+
+const updateKeyboardHeight = () => {
+    if (window.visualViewport) {
+        const height = window.innerHeight - window.visualViewport.height;
+        // 简单的阈值判断，避免微小抖动
+        keyboardHeight.value = height > 100 ? height : 0;
+        scrollToBottom();
+    }
+};
+
+onMounted(() => {
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateKeyboardHeight);
+        window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
+    }
+});
+
+onUnmounted(() => {
+    if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
+        window.visualViewport.removeEventListener('scroll', updateKeyboardHeight);
+    }
+});
 
 const close = () => {
     emit('update:visible', false);
@@ -107,20 +134,6 @@ watch(() => props.visible, (val) => {
         scrollToBottom();
     }
 });
-
-// 监听题目变化，清空历史 (如果需要的话，或者保留)
-// 这里我们假设每次打开都是针对特定题目的，如果题目变了，应该清空？
-// 但在 Quiz 中，题目切换时 ChatModal 是关闭的。
-// 为了简单，我们不自动清空，由父组件控制 key 或者手动清空。
-// 但为了“保留历史直到退出”，我们其实不需要做任何清空操作，除非父组件销毁了这个组件。
-
-const renderMarkdown = (text) => {
-    try {
-        return marked.parse(text);
-    } catch (e) {
-        return text;
-    }
-};
 
 const typeWriterEffect = async (fullText, messageIndex) => {
     const speed = 20;

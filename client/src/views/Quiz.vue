@@ -33,7 +33,7 @@
                     </div>
                     
                     <h3 class="text-xl font-bold text-gray-800 leading-relaxed mb-8">
-                        {{ quizStore.currentQuestion.content }}
+                        <span v-html="renderMarkdown(quizStore.currentQuestion.content)"></span>
                         <!-- 来源页码按钮 (仅在提交后/解析模式下显示) -->
                         <button 
                             v-if="quizStore.isSubmitted && quizStore.currentQuestion.relatedPages && quizStore.currentQuestion.relatedPages.length > 0"
@@ -111,7 +111,7 @@
                             class="w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center group relative overflow-hidden"
                             :class="getOptionClass(option)"
                         >
-                            <span class="text-sm font-medium relative z-10">{{ option }}</span>
+                            <span class="text-sm font-medium relative z-10" v-html="renderMarkdown(option)"></span>
                             
                             <!-- 选中/正确/错误 图标 -->
                             <div v-if="showResultIcon(option)" class="text-lg relative z-10">
@@ -264,9 +264,10 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useQuizStore } from '../stores/quizStore';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { marked } from 'marked';
+import { renderMarkdown } from '../utils/markdown';
 import AiChatModal from '../components/AiChatModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
+import { Capacitor } from '@capacitor/core';
 
 const quizStore = useQuizStore();
 const router = useRouter();
@@ -307,9 +308,12 @@ const questionContainerClass = computed(() => {
 // 解析 explanation 中的 [Page X] 为链接
 const parsedExplanation = computed(() => {
     const text = quizStore.currentQuestion.explanation || '';
-    if (!quizStore.currentPdf) return text;
+    // 先渲染 Markdown
+    const html = renderMarkdown(text);
+    
+    if (!quizStore.currentPdf) return html;
 
-    return text.replace(/\[Page\s+(\d+)\]/gi, (match, pageNum) => {
+    return html.replace(/\[Page\s+(\d+)\]/gi, (match, pageNum) => {
         return `<button class="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 bg-blue-100 text-blue-600 rounded text-[10px] font-bold hover:bg-blue-200 transition-colors cursor-pointer align-middle" onclick="window.openPdfPage('${quizStore.currentPdf.pdfId}', ${pageNum})">
             <i class="fa-solid fa-link text-[8px]"></i> P${pageNum}
         </button>`;
@@ -318,9 +322,14 @@ const parsedExplanation = computed(() => {
 
 // 全局挂载跳转函数
 const openPdfPage = (pdfId, pageNum) => {
-    // 更新为打开模态框
-    // 添加时间戳防止缓存导致无法跳转
-    pdfPreviewUrl.value = `/uploads/${pdfId}?t=${Date.now()}#page=${pageNum}`;
+    // 优先使用本地缓存路径
+    if (quizStore.currentPdf && quizStore.currentPdf.localPath) {
+        // Capacitor 本地文件路径
+        pdfPreviewUrl.value = Capacitor.convertFileSrc(quizStore.currentPdf.localPath) + `#page=${pageNum}`;
+    } else {
+        // 降级到服务器路径 (如果服务器未删除)
+        pdfPreviewUrl.value = `/uploads/${pdfId}?t=${Date.now()}#page=${pageNum}`;
+    }
     showPdfModal.value = true;
 };
 window.openPdfPage = openPdfPage;
@@ -371,15 +380,6 @@ const handleAnotherSet = () => {
 
 const openChat = () => {
     showChatModal.value = true;
-};
-
-// Markdown 渲染配置
-const renderMarkdown = (text) => {
-    try {
-        return marked.parse(text);
-    } catch (e) {
-        return text;
-    }
 };
 
 // --- 样式辅助函数 ---

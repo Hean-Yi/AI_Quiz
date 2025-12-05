@@ -1,5 +1,12 @@
 {
   "appId": "com.aiquiz.app",
   "appName": "AI Quiz",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
+  }
 }

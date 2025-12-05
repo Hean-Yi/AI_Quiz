@@ -65,6 +65,9 @@
                 <h4 class="font-bold text-gray-800 text-xs truncate">{{ file.originalName }}</h4>
                 <p class="text-[10px] text-gray-400 mt-0.5 font-medium">解析完成 • {{ file.totalPages }} 页</p>
              </div>
+             <button v-if="file.previewUrl" @click="previewFile(file)" class="w-6 h-6 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-colors mr-1" title="预览文件">
+                 <i class="fa-solid fa-eye text-xs"></i>
+             </button>
              <button @click="removeFile(idx)" class="w-6 h-6 rounded-full bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 flex items-center justify-center transition-colors">
                  <i class="fa-solid fa-xmark text-xs"></i>
              </button>
@@ -225,6 +228,7 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useQuizStore } from '../stores/quizStore';
 import ConfirmModal from '../components/ConfirmModal.vue';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 const router = useRouter();
 const quizStore = useQuizStore();
@@ -387,14 +391,28 @@ const triggerUpload = () => {
 
 const resetUpload = () => {
     uploadStatus.value = 'idle';
+    // 释放 URL
+    parsedFiles.value.forEach(f => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
     parsedFiles.value = [];
     progress.value = 0;
 };
 
 const removeFile = (index) => {
+    const file = parsedFiles.value[index];
+    if (file && file.previewUrl) {
+        URL.revokeObjectURL(file.previewUrl);
+    }
     parsedFiles.value.splice(index, 1);
     if (parsedFiles.value.length === 0) {
         resetUpload();
+    }
+};
+
+const previewFile = (file) => {
+    if (file.previewUrl) {
+        window.open(file.previewUrl, '_blank');
     }
 };
 
@@ -413,6 +431,12 @@ const handleFileUpload = async (event) => {
   const files = event.target.files;
   if (!files || files.length === 0) return;
 
+  // Create local previews
+  const localPreviews = {};
+  for (let i = 0; i < files.length; i++) {
+      localPreviews[files[i].name] = URL.createObjectURL(files[i]);
+  }
+
   // 重置状态
   uploadStatus.value = 'uploading';
   progress.value = 0;
@@ -420,8 +444,37 @@ const handleFileUpload = async (event) => {
 
   const formData = new FormData();
   // 支持多文件
+  const localPreviewsMap = {}; // 临时存储本地路径
+
   for (let i = 0; i < files.length; i++) {
-      formData.append('pdfFiles', files[i]);
+      const file = files[i];
+      formData.append('pdfFiles', file);
+
+      // 尝试保存到本地文件系统 (Capacitor)
+      try {
+          // 读取文件内容为 Base64
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+              const base64Data = e.target.result.split(',')[1];
+              const fileName = `cached_${Date.now()}_${file.name}`;
+              
+              try {
+                  const result = await Filesystem.writeFile({
+                      path: fileName,
+                      data: base64Data,
+                      directory: Directory.Data
+                  });
+                  // 记录本地路径
+                  localPreviewsMap[file.name] = result.uri;
+                  console.log('Saved local cache:', result.uri);
+              } catch (err) {
+                  console.warn('Failed to save local cache:', err);
+              }
+          };
+          reader.readAsDataURL(file);
+      } catch (e) {
+          console.warn('FileReader error:', e);
+      }
   }
 
   try {
@@ -445,7 +498,13 @@ const handleFileUpload = async (event) => {
     // 请求成功
     if (response.data.success) {
       // 追加新文件
-      const newFiles = response.data.data;
+      // 等待一下确保 FileReader 完成
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const newFiles = response.data.data.map(f => ({
+          ...f,
+          localPath: localPreviewsMap[f.originalName] || ''
+      }));
       // 简单的去重 (根据 originalName)
       const existingNames = new Set(parsedFiles.value.map(f => f.originalName));
       const uniqueNewFiles = newFiles.filter(f => !existingNames.has(f.originalName));
@@ -459,7 +518,10 @@ const handleFileUpload = async (event) => {
 
   } catch (error) {
     console.error('Upload failed:', error);
-    showAlert('上传失败，请检查网络或后端服务', 'error', '上传失败');
+    const currentBaseUrl = axios.defaults.baseURL || window.location.origin;
+    const errorMsg = error.message || 'Unknown error';
+    const status = error.response ? error.response.status : 'N/A';
+    showAlert(`上传失败: ${errorMsg}\nStatus: ${status}\nTarget: ${currentBaseUrl}`, 'error', '上传失败');
     uploadStatus.value = 'idle';
   } finally {
       // 清空 input，允许重复上传同名文件(如果删除了)
