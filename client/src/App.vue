@@ -1,21 +1,49 @@
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { App } from '@capacitor/app';
 import { Filesystem } from '@capacitor/filesystem';
+import { Keyboard } from '@capacitor/keyboard';
 import { useQuizStore } from './stores/quizStore';
 
 const route = useRoute();
 const router = useRouter();
 const quizStore = useQuizStore();
-const showTabBar = computed(() => route.name !== 'Quiz' && route.name !== 'Onboarding');
+const showTabBar = computed(() => route.name !== 'Quiz' && route.name !== 'Onboarding' && !isKeyboardVisible.value);
 const showHeader = computed(() => route.name !== 'Quiz' && route.name !== 'Onboarding');
 
 const transitionName = ref('fade');
+const keyboardOffset = ref(0);
+const lastKeyboardHeight = ref(0);
+const baseVh = ref(window.innerHeight);
+const isKeyboardVisible = ref(false);
+
+const appShellStyle = computed(() => ({
+  height: '100vh' // 直接使用 100vh，在 adjustResize 模式下会自动适应
+}));
+
+const tabBarStyle = computed(() => ({
+  bottom: '1.5rem'
+}));
+
+const contentStyle = computed(() => ({
+  // 当 TabBar 显示时，底部留出空间；否则不留（键盘弹出时 TabBar 隐藏，内容区占满剩余空间）
+  paddingBottom: showTabBar.value ? 'calc(8rem + env(safe-area-inset-bottom))' : '0px'
+}));
+
+// 监听窗口大小变化来检测键盘
+const handleResize = () => {
+  const currentHeight = window.innerHeight;
+  // 辅助检测：如果高度变化显著，同步状态
+  if (currentHeight < baseVh.value * 0.85) {
+    isKeyboardVisible.value = true;
+  } else if (Math.abs(currentHeight - baseVh.value) < 50) {
+    isKeyboardVisible.value = false;
+  }
+};
 
 // Base64 转 Blob 辅助函数
 const base64ToBlob = (base64, mimeType) => {
-  // 处理可能的前缀 (data:application/pdf;base64,)
   const base64Data = base64.replace(/^data:.*,/, '');
   const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
@@ -26,8 +54,27 @@ const base64ToBlob = (base64, mimeType) => {
   return new Blob([byteArray], { type: mimeType });
 };
 
+const handleFocusIn = (event) => {
+  const target = event.target;
+  const isEditable = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+  if (!isEditable) return;
+  // 延时滚动，确保键盘弹出后布局调整完毕
+  window.setTimeout(() => {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 300);
+};
+
 onMounted(() => {
-  // 监听外部应用打开 (Intent)
+  // 记录初始高度
+  baseVh.value = window.innerHeight;
+  
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('focusin', handleFocusIn);
+
+  // 仍然保留 Capacitor Keyboard 监听作为补充（某些设备可能不触发 resize）
+  Keyboard.addListener('keyboardWillShow', () => { isKeyboardVisible.value = true; });
+  Keyboard.addListener('keyboardWillHide', () => { isKeyboardVisible.value = false; });
+
   App.addListener('appUrlOpen', async (data) => {
     console.log('App opened with URL:', data.url);
     if (data.url && (data.url.startsWith('content://') || data.url.startsWith('file://'))) {
@@ -75,6 +122,12 @@ onMounted(() => {
   });
 });
 
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+  window.removeEventListener('focusin', handleFocusIn);
+  Keyboard.removeAllListeners();
+});
+
 watch(() => route.name, (to, from) => {
   const tabs = ['Home', 'Mistakes', 'Profile'];
   const isToTab = tabs.includes(to);
@@ -100,7 +153,7 @@ watch(() => route.name, (to, from) => {
 </script>
 
 <template>
-  <div class="w-full max-w-md mx-auto min-h-screen flex flex-col relative font-sans overflow-hidden bg-gray-50/50 pt-[env(safe-area-inset-top)]" :class="{'pb-24': showTabBar}">
+  <div class="w-full mx-auto flex flex-col relative font-sans overflow-hidden bg-gray-50/50 pt-[env(safe-area-inset-top)]" :style="appShellStyle">
     
     <!-- 顶部导航栏 -->
     <header v-if="showHeader" class="px-6 py-4 flex justify-between items-center sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300">
@@ -113,10 +166,10 @@ watch(() => route.name, (to, from) => {
         <router-link to="/settings" class="icon-btn">
             <i class="fa-solid fa-gear text-lg"></i>
         </router-link>
-    </header>
+  </header>
 
-    <!-- 页面内容渲染区 -->
-    <main class="flex-1 overflow-y-auto no-scrollbar relative">
+  <!-- 页面内容渲染区 -->
+  <main class="flex-1 overflow-y-auto no-scrollbar relative" :style="contentStyle">
       <router-view v-slot="{ Component }">
         <transition :name="transitionName" mode="out-in">
           <component :is="Component" />
@@ -125,7 +178,11 @@ watch(() => route.name, (to, from) => {
     </main>
 
     <!-- 底部 TabBar -->
-    <nav v-if="showTabBar" class="fixed bottom-6 left-6 right-6 w-[calc(100%-3rem)] max-w-[calc(28rem-3rem)] mx-auto glass-card p-2 flex justify-around items-center z-50 shadow-2xl shadow-black/5">
+    <nav 
+      class="fixed bottom-6 left-6 right-6 max-w-md mx-auto glass-card p-2 flex justify-around items-center z-50 shadow-2xl shadow-black/5 transition-all duration-300 ease-in-out" 
+      :class="{'translate-y-[200%] opacity-0': !showTabBar}"
+      :style="tabBarStyle"
+    >
         <router-link to="/" custom v-slot="{ navigate, isActive }">
           <button @click="navigate" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-2xl transition-all duration-300 relative overflow-hidden group">
               <div class="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>

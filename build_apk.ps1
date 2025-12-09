@@ -29,7 +29,11 @@ if (Test-Path $capBuildFile) {
 
 # PATCH: Force Java 17 in all Capacitor Plugins (node_modules)
 Write-Host "🔧 Patching Capacitor plugins to use Java 17..." -ForegroundColor Cyan
-$pluginBuildFiles = Get-ChildItem -Path "node_modules/@capacitor/*/android/build.gradle" -Recurse
+$pluginBuildFiles = @(Get-ChildItem -Path "node_modules/@capacitor/*/android/build.gradle" -Recurse)
+$communityPluginBuildFiles = Get-ChildItem -Path "node_modules/@capacitor-community/*/android/build.gradle" -Recurse -ErrorAction SilentlyContinue
+if ($communityPluginBuildFiles) {
+    $pluginBuildFiles += $communityPluginBuildFiles
+}
 $coreBuildFile = "node_modules/@capacitor/android/capacitor/build.gradle"
 if (Test-Path $coreBuildFile) {
     $pluginBuildFiles += Get-Item $coreBuildFile

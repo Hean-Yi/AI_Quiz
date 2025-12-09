@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full pt-6 px-6 pb-24">
+  <div class="flex flex-col pt-6 px-6">
     <!-- 标题 -->
     <div class="mb-8 animate-enter">
       <h2 class="text-2xl font-bold text-gray-900">个人中心</h2>

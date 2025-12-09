@@ -204,7 +204,7 @@
                 <button @click="handleAnotherSet" class="w-full py-4 bg-klein-blue hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all">
                     再来一套
                 </button>
-                <button @click="handleBack" class="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-sm shadow-lg shadow-gray-900/20 transition-all">
+                <button @click="returnHomeFromResult" class="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-sm shadow-lg shadow-gray-900/20 transition-all">
                     返回首页
                 </button>
             </div>
@@ -228,46 +228,27 @@
         @confirm="confirmExit"
     />
 
-    <!-- PDF 预览弹窗 -->
-    <div v-if="showPdfModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" @click.self="closePdfModal">
-        <div class="bg-white w-full h-full md:max-w-4xl md:h-[90vh] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in md:mx-4">
-            <!-- 顶部 -->
-            <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-white">
-                <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-file-pdf text-red-500"></i>
-                    原文预览
-                </h3>
-                <button @click="closePdfModal" class="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <!-- PDF 内容 -->
-            <div class="flex-1 bg-gray-100 relative">
-                <iframe 
-                    v-if="pdfPreviewUrl" 
-                    :src="pdfPreviewUrl" 
-                    class="w-full h-full border-none"
-                    title="PDF Preview"
-                ></iframe>
-                <div v-else class="flex items-center justify-center h-full text-gray-400">
-                    无法加载 PDF
-                </div>
-            </div>
-        </div>
-    </div>
+    <PdfPreviewModal
+        v-model:visible="showPdfModal"
+        :file-url="pdfPreviewUrl"
+        :file-data="pdfPreviewData"
+        :page="pdfPreviewPage"
+        :title="quizStore.currentPdf?.originalName || 'PDF 预览'"
+        @update:visible="val => { showPdfModal = val; if (!val) closePdfModal() }"
+    />
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuizStore } from '../stores/quizStore';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
 import { renderMarkdown } from '../utils/markdown';
 import AiChatModal from '../components/AiChatModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
-import { Capacitor } from '@capacitor/core';
+import PdfPreviewModal from '../components/PdfPreviewModal.vue';
+import { Filesystem } from '@capacitor/filesystem';
 
 const quizStore = useQuizStore();
 const router = useRouter();
@@ -280,6 +261,8 @@ const showChatModal = ref(false);
 // PDF 预览相关状态
 const showPdfModal = ref(false);
 const pdfPreviewUrl = ref('');
+const pdfPreviewData = ref(null);
+const pdfPreviewPage = ref(1);
 
 const isLastQuestion = computed(() => quizStore.currentQuestionIndex === quizStore.totalQuestions - 1);
 const progressPercentage = computed(() => ((quizStore.currentQuestionIndex + 1) / quizStore.totalQuestions) * 100);
@@ -313,30 +296,64 @@ const parsedExplanation = computed(() => {
     
     if (!quizStore.currentPdf) return html;
 
-    return html.replace(/\[Page\s+(\d+)\]/gi, (match, pageNum) => {
-        return `<button class="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 bg-blue-100 text-blue-600 rounded text-[10px] font-bold hover:bg-blue-200 transition-colors cursor-pointer align-middle" onclick="window.openPdfPage('${quizStore.currentPdf.pdfId}', ${pageNum})">
+    // 修复正则：支持 [Page 2, Page 3] 这种格式
+    // 策略：先替换单个的 [Page X]，对于逗号分隔的，可能需要更复杂的处理
+    // 或者简单点，直接全局替换 Page X，不管它是否在括号内，只要符合格式
+    
+    // 更好的正则：匹配 [Page X] 或 [Page X, Page Y]
+    // 但最简单的方法是先替换所有的 "Page \d+" 为链接，然后再处理括号？
+    // 不，我们直接匹配 Page \d+ 即可，前提是它看起来像引用
+    
+    return html.replace(/Page\s+(\d+)/gi, (match, pageNum) => {
+    return `<button class="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-bold hover:bg-blue-200 transition-colors cursor-pointer align-middle" onclick="window.openPdfPage('${quizStore.currentPdf.pdfId}', ${pageNum})">
             <i class="fa-solid fa-link text-[8px]"></i> P${pageNum}
         </button>`;
     });
 });
 
-// 全局挂载跳转函数
-const openPdfPage = (pdfId, pageNum) => {
-    // 优先使用本地缓存路径
-    if (quizStore.currentPdf && quizStore.currentPdf.localPath) {
-        // Capacitor 本地文件路径
-        pdfPreviewUrl.value = Capacitor.convertFileSrc(quizStore.currentPdf.localPath) + `#page=${pageNum}`;
-    } else {
-        // 降级到服务器路径 (如果服务器未删除)
-        pdfPreviewUrl.value = `/uploads/${pdfId}?t=${Date.now()}#page=${pageNum}`;
+const base64ToUint8 = (base64) => {
+    const cleaned = base64.replace(/^data:.*,/, '');
+    const binary = atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
     }
-    showPdfModal.value = true;
+    return bytes;
+};
+
+const normalizePath = (path) => path?.startsWith('file://') ? path.replace('file://', '') : path;
+
+const resolvePdfData = async (pdfId) => {
+    if (quizStore.currentPdf && quizStore.currentPdf.localPath) {
+        const res = await Filesystem.readFile({ path: normalizePath(quizStore.currentPdf.localPath) });
+        return base64ToUint8(res.data);
+    }
+    if (pdfId) {
+        const resp = await fetch(`/uploads/${pdfId}`);
+        const buffer = await resp.arrayBuffer();
+        return new Uint8Array(buffer);
+    }
+    return null;
+};
+
+const openPdfPage = (pdfId, pageNum = 1) => {
+    resolvePdfData(pdfId).then((data) => {
+        if (!data) return;
+        pdfPreviewData.value = data;
+        pdfPreviewUrl.value = '';
+        pdfPreviewPage.value = Number(pageNum) || 1;
+        showPdfModal.value = true;
+    }).catch((e) => {
+        console.error('加载 PDF 失败', e);
+    });
 };
 window.openPdfPage = openPdfPage;
 
 const closePdfModal = () => {
     showPdfModal.value = false;
     pdfPreviewUrl.value = '';
+    pdfPreviewPage.value = 1;
+    pdfPreviewData.value = null;
 };
 
 // 监听提交状态，显示弹窗
@@ -359,10 +376,31 @@ const prevQuestion = () => {
 };
 
 const handleBack = () => {
+    if (quizStore.isSubmitted) {
+        showScoreModal.value = true;
+        return;
+    }
     showExitModal.value = true;
 };
 
-const confirmExit = () => {
+const deleteCachedFiles = async () => {
+    const list = quizStore.currentPdfList || [];
+    await Promise.all(list.map(async (f) => {
+        if (f.localPath) {
+            try {
+                await Filesystem.deleteFile({ path: normalizePath(f.localPath) });
+            } catch (e) {
+                console.warn('删除缓存失败', e);
+            }
+        }
+    }));
+};
+
+const confirmExit = async () => {
+    showExitModal.value = false;
+    showScoreModal.value = false;
+    await deleteCachedFiles();
+    quizStore.resetQuiz();
     router.push('/');
 };
 
@@ -371,9 +409,15 @@ const viewAnalysis = () => {
     quizStore.currentQuestionIndex = 0;
 };
 
-const handleAnotherSet = () => {
-    quizStore.resetForNewQuiz();
+const handleAnotherSet = async () => {
+    showScoreModal.value = false;
+    await deleteCachedFiles();
+    quizStore.resetQuiz();
     router.push('/');
+};
+
+const returnHomeFromResult = async () => {
+    await confirmExit();
 };
 
 // --- Chat 逻辑 ---

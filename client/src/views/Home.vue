@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full pt-6 px-6">
+  <div class="flex flex-col pt-6 px-6">
     <!-- 欢迎头 -->
     <div class="mb-8 animate-enter">
       <h2 class="text-3xl font-bold text-gray-900 tracking-tight">Hello, {{ userNickname || userRole }} 👋</h2>
@@ -219,6 +219,15 @@
         @confirm="handleAlertConfirm"
     />
 
+    <PdfPreviewModal
+        v-model:visible="showPdfPreview"
+        :file-url="pdfPreviewUrl"
+        :file-data="pdfPreviewData"
+        :page="pdfPreviewPage"
+        :title="pdfPreviewTitle"
+        @update:visible="val => { showPdfPreview.value = val; if (!val) { pdfPreviewUrl.value = ''; pdfPreviewPage.value = 1; pdfPreviewData.value = null } }"
+    />
+
   </div>
 </template>
 
@@ -228,7 +237,11 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useQuizStore } from '../stores/quizStore';
 import ConfirmModal from '../components/ConfirmModal.vue';
+import PdfPreviewModal from '../components/PdfPreviewModal.vue';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+
+const PdfViewer = registerPlugin('PdfViewer');
 
 const router = useRouter();
 const quizStore = useQuizStore();
@@ -308,6 +321,13 @@ const showErrorModal = ref(false);
 const errorMessage = ref('');
 const errorDetail = ref('');
 
+// PDF 预览
+const showPdfPreview = ref(false);
+const pdfPreviewUrl = ref('');
+const pdfPreviewPage = ref(1);
+const pdfPreviewTitle = ref('PDF 预览');
+const pdfPreviewData = ref(null);
+
 const questionTypes = [
     { label: '单选题', value: 'multiple_choice', icon: 'fa-solid fa-list-ul' },
     { label: '判断题', value: 'true_false', icon: 'fa-solid fa-check-double' },
@@ -334,6 +354,27 @@ const defaultTypeCounts = {
     multiple_choice: 10,
     true_false: 5,
     short_answer: 3
+};
+
+const base64ToUint8 = (base64) => {
+    const cleaned = base64.replace(/^data:.*,/, '');
+    const binary = atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+};
+
+const normalizePath = (path) => path?.startsWith('file://') ? path.replace('file://', '') : path;
+
+const deleteLocalFile = async (path) => {
+    if (!path) return;
+    try {
+        await Filesystem.deleteFile({ path: normalizePath(path) });
+    } catch (e) {
+        console.warn('删除本地缓存失败', e);
+    }
 };
 
 // 监听题型变化，处理新增/删除
@@ -394,6 +435,7 @@ const resetUpload = () => {
     // 释放 URL
     parsedFiles.value.forEach(f => {
         if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+        if (f.localPath) deleteLocalFile(f.localPath);
     });
     parsedFiles.value = [];
     progress.value = 0;
@@ -404,16 +446,58 @@ const removeFile = (index) => {
     if (file && file.previewUrl) {
         URL.revokeObjectURL(file.previewUrl);
     }
+    if (file && file.localPath) {
+        deleteLocalFile(file.localPath);
+    }
     parsedFiles.value.splice(index, 1);
     if (parsedFiles.value.length === 0) {
         resetUpload();
     }
 };
 
-const previewFile = (file) => {
-    if (file.previewUrl) {
-        window.open(file.previewUrl, '_blank');
+const resolvePdfData = async (file) => {
+    if (!file) return null;
+    if (file.localPath) {
+        const res = await Filesystem.readFile({ path: normalizePath(file.localPath) });
+        return base64ToUint8(res.data);
     }
+    if (file.previewUrl) {
+        const resp = await fetch(file.previewUrl);
+        const buf = await resp.arrayBuffer();
+        return new Uint8Array(buf);
+    }
+    if (file.pdfId) {
+        const resp = await fetch(`/uploads/${file.pdfId}`);
+        const buf = await resp.arrayBuffer();
+        return new Uint8Array(buf);
+    }
+    return null;
+};
+
+const previewFile = async (file) => {
+    // Native Preview
+    if (Capacitor.isNativePlatform()) {
+        if (file.localPath) {
+            try {
+                await PdfViewer.openPdf({ filePath: file.localPath });
+            } catch (e) {
+                console.error('Native preview failed', e);
+                showAlert('无法预览文件: ' + e.message, 'error');
+            }
+            return;
+        } else {
+             showAlert('本地文件不存在，无法预览', 'warning');
+             return;
+        }
+    }
+
+    const data = await resolvePdfData(file);
+    if (!data) return;
+    pdfPreviewTitle.value = file.originalName || 'PDF 预览';
+    pdfPreviewData.value = data;
+    pdfPreviewUrl.value = '';
+    pdfPreviewPage.value = 1;
+    showPdfPreview.value = true;
 };
 
 const toggleType = (typeValue) => {

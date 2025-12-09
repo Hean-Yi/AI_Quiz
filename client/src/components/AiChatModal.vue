@@ -2,7 +2,7 @@
     <div v-if="visible" class="fixed inset-0 z-[70] flex flex-col justify-end items-center bg-black/20 backdrop-blur-sm animate-fade-in" @click.self="close">
         <div 
             class="bg-white w-full max-w-md rounded-t-[32px] shadow-2xl flex flex-col animate-slide-up overflow-hidden transition-all duration-200"
-            :style="{ height: `calc(85vh - ${keyboardHeight}px)` }"
+            style="height: 85vh; max-height: 100%;"
         >
             <!-- 顶部 -->
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
@@ -83,7 +83,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, watch, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
 import { renderMarkdown } from '../utils/markdown';
 
@@ -99,30 +99,6 @@ const chatInput = ref('');
 const chatMessages = ref([]);
 const isChatting = ref(false);
 const chatContainer = ref(null);
-const keyboardHeight = ref(0);
-
-const updateKeyboardHeight = () => {
-    if (window.visualViewport) {
-        const height = window.innerHeight - window.visualViewport.height;
-        // 简单的阈值判断，避免微小抖动
-        keyboardHeight.value = height > 100 ? height : 0;
-        scrollToBottom();
-    }
-};
-
-onMounted(() => {
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', updateKeyboardHeight);
-        window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
-    }
-});
-
-onUnmounted(() => {
-    if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
-        window.visualViewport.removeEventListener('scroll', updateKeyboardHeight);
-    }
-});
 
 const close = () => {
     emit('update:visible', false);

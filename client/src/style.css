@@ -5,6 +5,9 @@
 :root {
   --klein-blue: #002FA7;
   --primary-gradient: linear-gradient(135deg, #002FA7 0%, #0055FF 100%);
+  --app-vh: 100vh;
+  --app-base-vh: 100vh;
+  --keyboard-offset: 0px;
 }
 
 body {
