@@ -78,6 +78,7 @@ app.post('/api/system/prompt', async (req, res) => {
 });
 
 // 3. 上传 PDF (支持多文件)
+// 使用 multer 中间件处理文件上传，限制最多 5 个文件
 app.post('/api/pdf/upload', upload.array('pdfFiles', 5), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
@@ -88,9 +89,10 @@ app.post('/api/pdf/upload', upload.array('pdfFiles', 5), async (req, res) => {
 
         for (const file of req.files) {
             console.log(`Processing file: ${file.filename}`);
+            // 解析 PDF 内容
             const parsedData = await pdfService.parsePdf(file.path);
 
-            // 解决中文文件名乱码问题
+            // 解决中文文件名乱码问题 (Multer 在某些环境下编码处理可能有误)
             let originalName = file.originalname;
             try {
                 originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
@@ -119,6 +121,7 @@ app.post('/api/pdf/upload', upload.array('pdfFiles', 5), async (req, res) => {
 });
 
 // 4. 生成题目
+// 核心接口：接收 PDF ID 和配置，调用 AI 生成测验题目
 app.post('/api/quiz/generate', async (req, res) => {
     try {
         // 接收前端传来的完整配置
@@ -139,17 +142,18 @@ app.post('/api/quiz/generate', async (req, res) => {
             if (fs.existsSync(filePath)) {
                 const parsedData = await pdfService.parsePdf(filePath);
                 allPdfText += parsedData.text + "\n\n";
-                // 为页面添加 source 标识，方便 RAG 区分
+                // 为页面添加 source 标识，方便 RAG 区分来源
                 const taggedPages = parsedData.pages.map(p => `[Source: ${pdfId}] ${p}`);
                 allPages = [...allPages, ...taggedPages];
 
-                // 立即创建向量索引并删除文件 (释放服务器空间)
+                // 立即创建向量索引 (用于 RAG 检索)
                 try {
                     await ragService.getOrCreateIndex(pdfId, parsedData.pages, { apiKey, baseURL });
-                    fs.unlinkSync(filePath);
-                    console.log(`Processed and deleted file: ${pdfId}`);
+                    // 注意：此处不立即删除文件，因为可能还需要预览或后续处理
+                    // fs.unlinkSync(filePath); 
+                    console.log(`Processed file for RAG: ${pdfId}`);
                 } catch (e) {
-                    console.error(`Error processing/deleting ${pdfId}:`, e);
+                    console.error(`Error processing ${pdfId}:`, e);
                 }
             }
         }
@@ -158,10 +162,10 @@ app.post('/api/quiz/generate', async (req, res) => {
              return res.status(404).json({ error: 'No valid PDF content found' });
         }
 
-        // 3. 获取 Prompt 模板
+        // 3. 获取 Prompt 模板 (从文件系统读取)
         const promptTemplates = await promptService.getAllPrompts();
 
-        // 4. 组装 Config 对象
+        // 4. 组装 AI Config 对象
         const config = {
             apiKey,
             provider: provider || 'openai',
@@ -170,7 +174,7 @@ app.post('/api/quiz/generate', async (req, res) => {
         };
 
         // 5. 调用 AI 生成题目
-        // 注意：这里传入的是数组 pdfIds
+        // 这一步会调用 aiService，结合 Prompt 和 RAG 检索到的上下文生成题目
         const questions = await aiService.generateQuiz(
             allPdfText, 
             types, 
@@ -185,9 +189,7 @@ app.post('/api/quiz/generate', async (req, res) => {
         );
 
         // 6. 清理上传的 PDF 文件 (释放服务器空间)
-        // 仅在生成成功后删除，如果生成失败保留以便排查(或者也删除?)
-        // 用户要求: "在每个用户完成请求, 不再有预览pdf的需要的时间释放掉占用"
-        // 此时前端已经缓存了文件，或者不需要预览了。
+        // 在生成成功后删除临时文件
         for (const pdfId of pdfIds) {
             const filePath = path.join(uploadDir, pdfId);
             if (fs.existsSync(filePath)) {

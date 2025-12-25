@@ -18,7 +18,9 @@
     </div>
 
     <!-- 题目卡片区域 -->
-    <div class="flex-1 overflow-y-auto px-6 pb-32 no-scrollbar relative">
+    <div class="flex-1 overflow-y-auto no-scrollbar relative">
+        <div :class="isDesktopLayout ? 'grid grid-cols-[minmax(0,1fr)_280px] gap-8 px-8 pb-10' : 'px-6 pb-32'">
+            <div>
         <transition name="slide-fade" mode="out-in">
             <div :key="quizStore.currentQuestion.id" 
                  class="flex flex-col will-change-transform"
@@ -147,10 +149,56 @@
 
             </div>
         </transition>
+      </div>
+
+      <aside v-if="isDesktopLayout" class="sticky top-6 self-start space-y-4">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400">进度</p>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span class="text-3xl font-semibold text-gray-900">{{ quizStore.currentQuestionIndex + 1 }}</span>
+            <span class="text-xs text-gray-400">/ {{ quizStore.totalQuestions }}</span>
+          </div>
+          <div class="mt-3 h-1.5 w-full rounded-full bg-gray-100">
+            <div class="h-full rounded-full bg-klein-blue" :style="{ width: progressPercentage + '%' }"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            @click="prevQuestion"
+            :disabled="quizStore.currentQuestionIndex === 0"
+            class="h-11 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white"
+          >
+            上一题
+          </button>
+          <button
+            @click="nextQuestion"
+            :disabled="quizStore.currentQuestionIndex === quizStore.totalQuestions - 1"
+            class="h-11 rounded-xl bg-klein-blue text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-klein-blue"
+          >
+            下一题
+          </button>
+          <button
+            v-if="isLastQuestion && !quizStore.isSubmitted"
+            @click="quizStore.submitQuiz"
+            class="col-span-2 h-11 rounded-xl bg-gray-900 text-white text-sm font-semibold shadow-sm hover:bg-black"
+          >
+            提交试卷
+          </button>
+          <button
+            v-else-if="quizStore.isSubmitted"
+            @click="returnHomeFromResult"
+            class="col-span-2 h-11 rounded-xl border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-200 hover:text-gray-900"
+          >
+            返回首页
+          </button>
+        </div>
+      </aside>
     </div>
+  </div>
 
     <!-- 底部控制栏 -->
-    <div class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-between items-center z-50 w-full max-w-md mx-auto">
+    <div v-if="!isDesktopLayout" class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-between items-center z-50 w-full max-w-md mx-auto">
         <button 
             @click="prevQuestion"  
             :disabled="quizStore.currentQuestionIndex === 0"
@@ -180,7 +228,8 @@
     </div>
 
     <!-- 结果弹窗 (提交后显示) -->
-    <div v-if="showScoreModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
+    <teleport to="body">
+      <div v-if="showScoreModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
         <div class="bg-white rounded-[32px] p-8 w-full max-w-sm text-center shadow-2xl transform transition-all scale-100 relative overflow-hidden">
             <!-- 背景装饰 -->
             <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-blue-50 to-transparent -z-10"></div>
@@ -209,7 +258,8 @@
                 </button>
             </div>
         </div>
-    </div>
+      </div>
+    </teleport>
 
     <!-- AI 问答弹窗 (Bottom Sheet Style) -->
     <AiChatModal 
@@ -244,6 +294,7 @@
 import { ref, computed, watch } from 'vue';
 import { useQuizStore } from '../stores/quizStore';
 import { useRouter } from 'vue-router';
+import { useLayoutMode, useLayoutPath } from '../utils/layout';
 import { renderMarkdown } from '../utils/markdown';
 import AiChatModal from '../components/AiChatModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
@@ -252,6 +303,8 @@ import { Filesystem } from '@capacitor/filesystem';
 
 const quizStore = useQuizStore();
 const router = useRouter();
+const { withLayout } = useLayoutPath();
+const { isDesktopLayout } = useLayoutMode();
 const showScoreModal = ref(false);
 const showExitModal = ref(false);
 
@@ -264,9 +317,12 @@ const pdfPreviewUrl = ref('');
 const pdfPreviewData = ref(null);
 const pdfPreviewPage = ref(1);
 
+// 计算属性：是否为最后一题
 const isLastQuestion = computed(() => quizStore.currentQuestionIndex === quizStore.totalQuestions - 1);
+// 计算属性：当前进度百分比
 const progressPercentage = computed(() => ((quizStore.currentQuestionIndex + 1) / quizStore.totalQuestions) * 100);
 
+// 计算属性：题目类型标签
 const questionTypeLabel = computed(() => {
     const type = quizStore.currentQuestion.type;
     if (type === 'true_false') return '判断题';
@@ -296,14 +352,7 @@ const parsedExplanation = computed(() => {
     
     if (!quizStore.currentPdf) return html;
 
-    // 修复正则：支持 [Page 2, Page 3] 这种格式
-    // 策略：先替换单个的 [Page X]，对于逗号分隔的，可能需要更复杂的处理
-    // 或者简单点，直接全局替换 Page X，不管它是否在括号内，只要符合格式
-    
-    // 更好的正则：匹配 [Page X] 或 [Page X, Page Y]
-    // 但最简单的方法是先替换所有的 "Page \d+" 为链接，然后再处理括号？
-    // 不，我们直接匹配 Page \d+ 即可，前提是它看起来像引用
-    
+    // 替换 "Page X" 为可点击的按钮，点击后打开 PDF 预览
     return html.replace(/Page\s+(\d+)/gi, (match, pageNum) => {
     return `<button class="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-bold hover:bg-blue-200 transition-colors cursor-pointer align-middle" onclick="window.openPdfPage('${quizStore.currentPdf.pdfId}', ${pageNum})">
             <i class="fa-solid fa-link text-[8px]"></i> P${pageNum}
@@ -311,6 +360,7 @@ const parsedExplanation = computed(() => {
     });
 });
 
+// 工具函数：Base64 转 Uint8Array
 const base64ToUint8 = (base64) => {
     const cleaned = base64.replace(/^data:.*,/, '');
     const binary = atob(cleaned);
@@ -321,17 +371,36 @@ const base64ToUint8 = (base64) => {
     return bytes;
 };
 
+// 工具函数：规范化文件路径
 const normalizePath = (path) => path?.startsWith('file://') ? path.replace('file://', '') : path;
 
+// 解析 PDF 数据 (优先从本地缓存读取，其次从预览 URL，最后从服务器)
 const resolvePdfData = async (pdfId) => {
     if (quizStore.currentPdf && quizStore.currentPdf.localPath) {
-        const res = await Filesystem.readFile({ path: normalizePath(quizStore.currentPdf.localPath) });
-        return base64ToUint8(res.data);
+        try {
+            const res = await Filesystem.readFile({ path: normalizePath(quizStore.currentPdf.localPath) });
+            return base64ToUint8(res.data);
+        } catch (e) {
+            console.warn('Local cache read failed, fallback to preview URL', e);
+        }
+    }
+    if (quizStore.currentPdf && quizStore.currentPdf.previewUrl) {
+        try {
+            const resp = await fetch(quizStore.currentPdf.previewUrl);
+            const buffer = await resp.arrayBuffer();
+            return new Uint8Array(buffer);
+        } catch (e) {
+            console.warn('Preview URL load failed, fallback to server file', e);
+        }
     }
     if (pdfId) {
-        const resp = await fetch(`/uploads/${pdfId}`);
-        const buffer = await resp.arrayBuffer();
-        return new Uint8Array(buffer);
+        try {
+            const resp = await fetch(`/uploads/${pdfId}`);
+            const buffer = await resp.arrayBuffer();
+            return new Uint8Array(buffer);
+        } catch (e) {
+            console.warn('Server PDF load failed', e);
+        }
     }
     return null;
 };
@@ -401,7 +470,7 @@ const confirmExit = async () => {
     showScoreModal.value = false;
     await deleteCachedFiles();
     quizStore.resetQuiz();
-    router.push('/');
+    router.push(withLayout('/'));
 };
 
 const viewAnalysis = () => {
@@ -413,7 +482,7 @@ const handleAnotherSet = async () => {
     showScoreModal.value = false;
     await deleteCachedFiles();
     quizStore.resetQuiz();
-    router.push('/');
+    router.push(withLayout('/'));
 };
 
 const returnHomeFromResult = async () => {

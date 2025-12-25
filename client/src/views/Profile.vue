@@ -13,7 +13,7 @@
         </div>
         <div>
             <h3 class="text-lg font-bold text-gray-800">{{ userNickname || userRoleLabel }}</h3>
-            <p class="text-xs text-gray-400">{{ userDomain || '通用领域' }} • {{ userDifficulty }}</p>
+            <p class="text-xs text-gray-400">{{ userDomain || '通用领域' }} • {{ userDifficultyLabel }}</p>
         </div>
         <div class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 group-hover:text-klein-blue transition-colors">
             <i class="fa-solid fa-pen-to-square"></i>
@@ -21,7 +21,8 @@
     </div>
 
     <!-- 编辑个人信息弹窗 -->
-    <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
+    <teleport to="body">
+      <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
         <div class="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl transform transition-all scale-100" @click.stop>
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold text-gray-800">编辑个人信息</h3>
@@ -33,25 +34,25 @@
             <div class="space-y-4">
                 <!-- 昵称 -->
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">昵称 (Nickname)</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">昵称</label>
                     <input v-model="editForm.nickname" type="text" placeholder="例如：小明" class="glass-input w-full p-3 text-sm" />
                 </div>
 
                 <!-- 学习领域 -->
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">学习领域 (Domain)</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">学习领域</label>
                     <input v-model="editForm.domain" type="text" placeholder="例如：计算机科学、法律、医学" class="glass-input w-full p-3 text-sm" />
                 </div>
 
                 <!-- 用户身份 -->
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">用户身份 (Role)</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">用户身份</label>
                     <div class="relative">
                         <select v-model="editForm.role" class="glass-input w-full p-3 pr-10 appearance-none text-sm font-medium">
-                            <option value="Beginner">新手小白 (Beginner)</option>
-                            <option value="Student">大学生 (Student)</option>
-                            <option value="Professional">职场人士 (Professional)</option>
-                            <option value="Interviewee">面试备考 (Interviewee)</option>
+                            <option value="Beginner">新手小白</option>
+                            <option value="Student">大学生</option>
+                            <option value="Professional">职场人士</option>
+                            <option value="Interviewee">面试备考</option>
                         </select>
                         <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -61,16 +62,16 @@
 
                 <!-- 题目难度 -->
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">题目难度 (Difficulty)</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">题目难度</label>
                     <div class="flex bg-gray-100 p-1 rounded-xl">
                         <button 
-                            v-for="diff in ['Easy', 'Medium', 'Hard']" 
-                            :key="diff"
-                            @click="editForm.difficulty = diff"
+                            v-for="diff in difficultyOptions" 
+                            :key="diff.value"
+                            @click="editForm.difficulty = diff.value"
                             class="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
-                            :class="editForm.difficulty === diff ? 'bg-white text-klein-blue shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+                            :class="editForm.difficulty === diff.value ? 'bg-white text-klein-blue shadow-sm' : 'text-gray-400 hover:text-gray-600'"
                         >
-                            {{ diff }}
+                            {{ diff.label }}
                         </button>
                     </div>
                 </div>
@@ -80,7 +81,8 @@
                 保存修改
             </button>
         </div>
-    </div>
+      </div>
+    </teleport>
 
     <!-- 统计数据 -->
     <div class="grid grid-cols-2 gap-4 mb-6 animate-enter delay-200">
@@ -176,6 +178,18 @@ const roleLabels = {
 };
 
 const userRoleLabel = computed(() => roleLabels[userRole.value] || userRole.value);
+const difficultyLabels = {
+    Easy: '简单',
+    Medium: '适中',
+    Hard: '困难'
+};
+const userDifficultyLabel = computed(() => difficultyLabels[userDifficulty.value] || userDifficulty.value);
+
+const difficultyOptions = [
+    { label: '简单', value: 'Easy' },
+    { label: '适中', value: 'Medium' },
+    { label: '困难', value: 'Hard' }
+];
 
 onMounted(() => {
     // 读取本地存储

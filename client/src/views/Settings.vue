@@ -6,6 +6,7 @@
     </div>
     
     <div class="space-y-6">
+      <div :class="isDesktopLayout ? 'grid grid-cols-[360px_minmax(0,1fr)] gap-8' : 'space-y-6'">
       
       <!-- AI 模型配置卡片 -->
       <div class="glass-card p-6 space-y-5">
@@ -18,12 +19,12 @@
 
         <!-- API Provider -->
         <div>
-          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">服务商 (Provider)</label>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">服务商</label>
           <div class="relative">
               <select v-model="provider" @change="handleProviderChange" class="glass-input w-full p-4 pr-10 appearance-none font-medium">
-                  <option value="openai">OpenAI / DeepSeek / Compatible</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="google">Google (Gemini)</option>
+                  <option value="openai">OpenAI / DeepSeek / 兼容接口</option>
+                  <option value="anthropic">Anthropic（Claude）</option>
+                  <option value="google">Google（Gemini）</option>
               </select>
               <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
                   <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -31,9 +32,9 @@
           </div>
         </div>
 
-        <!-- API Base URL -->
+        <!-- API 基础地址 -->
         <div v-if="provider === 'openai'" class="animate-enter">
-          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API Base URL</label>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API 基础地址</label>
           <input v-model="baseUrl" type="text" placeholder="https://api.openai.com/v1" class="glass-input w-full p-4 font-mono text-sm" />
           <div class="flex gap-2 mt-2 overflow-x-auto no-scrollbar pb-1">
              <button @click="baseUrl = 'https://api.openai.com/v1'" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-gray-600 transition-colors whitespace-nowrap active:scale-95">
@@ -57,9 +58,9 @@
           </div>
         </div>
 
-        <!-- API Key -->
+        <!-- API 密钥 -->
         <div>
-          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API Key</label>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API 密钥</label>
           <div class="relative">
             <input :type="showKey ? 'text' : 'password'" v-model="apiKey" placeholder="sk-..." class="glass-input w-full p-4 pr-10" />
             <button @click="showKey = !showKey" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -70,7 +71,7 @@
 
         <!-- Model Name -->
         <div>
-          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">模型名称 (Model)</label>
+          <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">模型名称</label>
           <input v-model="modelName" type="text" placeholder="gpt-3.5-turbo" class="glass-input w-full p-4 font-mono text-sm" />
         </div>
       </div>
@@ -134,6 +135,8 @@
          </p>
       </div>
 
+      </div>
+
       <button @click="saveAll" class="primary-btn w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-900/20" :disabled="isSaving">
           <span v-if="!isSaving">保存设置</span>
           <span v-else class="flex items-center justify-center gap-2">
@@ -161,9 +164,12 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
+import { useLayoutMode, useLayoutPath } from '../utils/layout';
 import ConfirmModal from '../components/ConfirmModal.vue';
 
 const router = useRouter();
+const { withLayout } = useLayoutPath();
+const { isDesktopLayout } = useLayoutMode();
 
 // 统一 Alert 状态管理
 const alertState = ref({
@@ -304,7 +310,7 @@ const saveAll = async () => {
 
     // 提示成功
     showAlert('设置已保存', 'success', '保存成功', '返回首页', () => {
-        router.push('/');
+        router.push(withLayout('/'));
     });
 
   } catch (err) {

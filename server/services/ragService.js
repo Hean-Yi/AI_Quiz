@@ -36,6 +36,11 @@ export const getOrCreateIndex = async (pdfId, pages, config) => {
         return await HNSWLib.load(saveDir, embeddings);
     }
 
+    if (!pages || pages.length === 0) {
+        console.warn(`No pages provided for ${pdfId}, skipping vector store creation.`);
+        return null;
+    }
+
     console.log(`Creating new vector store for ${pdfId}`);
     
     // 1. 准备文档
@@ -62,6 +67,11 @@ export const getOrCreateIndex = async (pdfId, pages, config) => {
         });
     }
 
+    if (docs.length === 0) {
+        console.warn(`No text chunks extracted for ${pdfId}, skipping vector store creation.`);
+        return null;
+    }
+
     // 2. 创建向量存储
     const vectorStore = await HNSWLib.fromDocuments(docs, embeddings);
     
@@ -81,6 +91,9 @@ export const getOrCreateIndex = async (pdfId, pages, config) => {
 export const retrieveContext = async (pdfId, query, config, pages = []) => {
     try {
         const vectorStore = await getOrCreateIndex(pdfId, pages, config);
+        if (!vectorStore) {
+            return [];
+        }
         
         // 检索 Top 5
         const results = await vectorStore.similaritySearch(query, 5);

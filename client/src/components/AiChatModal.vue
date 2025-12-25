@@ -1,9 +1,20 @@
 <template>
-    <div v-if="visible" class="fixed inset-0 z-[70] flex flex-col justify-end items-center bg-black/20 backdrop-blur-sm animate-fade-in" @click.self="close">
-        <div 
-            class="bg-white w-full max-w-md rounded-t-[32px] shadow-2xl flex flex-col animate-slide-up overflow-hidden transition-all duration-200"
-            style="height: 85vh; max-height: 100%;"
+    <teleport to="body">
+        <div
+            v-if="visible"
+            class="fixed inset-0 z-[70] flex flex-col bg-black/30 backdrop-blur-sm animate-fade-in"
+            :class="isDesktopLayout ? 'items-center justify-center px-6 py-8' : 'items-end justify-center'"
+            @click.self="close"
         >
+            <div
+                class="bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-200"
+                :class="[
+                    isDesktopLayout
+                        ? 'w-[min(960px,92vw)] h-[72vh] rounded-2xl animate-scale-in'
+                        : 'w-full max-w-md rounded-t-[32px] animate-slide-up'
+                ]"
+                :style="panelStyle"
+            >
             <!-- 顶部 -->
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-3">
@@ -16,7 +27,7 @@
                     </div>
                 </div>
                 <button @click="close" class="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid" :class="isDesktopLayout ? 'fa-xmark' : 'fa-chevron-down'"></i>
                 </button>
             </div>
 
@@ -78,14 +89,16 @@
                     </button>
                 </div>
             </div>
+            </div>
         </div>
-    </div>
+    </teleport>
 </template>
 
 <script setup>
-import { ref, nextTick, watch, onMounted, onUnmounted, computed } from 'vue';
-import axios from 'axios';
-import { renderMarkdown } from '../utils/markdown';
+import { ref, nextTick, watch, computed } from 'vue'
+import axios from 'axios'
+import { renderMarkdown } from '../utils/markdown'
+import { useLayoutMode } from '../utils/layout'
 
 const props = defineProps({
     visible: Boolean,
@@ -95,10 +108,15 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible']);
 
-const chatInput = ref('');
-const chatMessages = ref([]);
-const isChatting = ref(false);
-const chatContainer = ref(null);
+const { isDesktopLayout } = useLayoutMode()
+const chatInput = ref('')
+const chatMessages = ref([])
+const isChatting = ref(false)
+const chatContainer = ref(null)
+
+const panelStyle = computed(() => (
+    isDesktopLayout.value ? {} : { height: '85vh', maxHeight: '100%' }
+))
 
 const close = () => {
     emit('update:visible', false);
@@ -181,6 +199,10 @@ const scrollToBottom = () => {
     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -189,6 +211,11 @@ const scrollToBottom = () => {
 @keyframes slideUp {
     from { transform: translate3d(0, 100%, 0); }
     to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.96); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
 }
 
 :deep(.markdown-body) {

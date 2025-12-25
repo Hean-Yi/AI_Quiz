@@ -13,26 +13,26 @@
           <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 text-klein-blue text-3xl shadow-lg shadow-blue-100">
             <i class="fa-solid fa-hand-sparkles"></i>
           </div>
-          <h1 class="text-3xl font-black text-gray-900 mb-3 tracking-tight">欢迎使用 AI Quiz</h1>
+          <h1 class="text-3xl font-black text-gray-900 mb-3 tracking-tight">欢迎使用 AI 测验</h1>
           <p class="text-gray-500 leading-relaxed">让我们先花一点时间了解你的学习偏好，以便 AI 助教为你提供更精准的服务。</p>
         </div>
 
         <div class="space-y-6 flex-1">
             <!-- 昵称 -->
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">昵称 (Nickname)</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">昵称</label>
                 <input v-model="form.nickname" type="text" placeholder="例如：小明、Alex" class="glass-input w-full p-4 text-sm border-gray-200 focus:border-klein-blue" />
             </div>
 
             <!-- 学习领域 -->
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">学习领域 (Domain)</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">学习领域</label>
                 <input v-model="form.domain" type="text" placeholder="例如：计算机科学、法律、医学" class="glass-input w-full p-4 text-sm border-gray-200 focus:border-klein-blue" />
             </div>
 
             <!-- 用户身份 -->
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">当前身份 (Role)</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">当前身份</label>
                 <div class="grid grid-cols-2 gap-3">
                     <button 
                         v-for="role in roles" 
@@ -49,16 +49,16 @@
 
             <!-- 难度偏好 -->
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">默认难度 (Difficulty)</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">默认难度</label>
                 <div class="flex bg-gray-100 p-1 rounded-xl">
                     <button 
-                        v-for="diff in ['Easy', 'Medium', 'Hard']" 
-                        :key="diff"
-                        @click="form.difficulty = diff"
+                        v-for="diff in difficultyOptions" 
+                        :key="diff.value"
+                        @click="form.difficulty = diff.value"
                         class="flex-1 py-3 rounded-lg text-xs font-bold transition-all"
-                        :class="form.difficulty === diff ? 'bg-white text-klein-blue shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+                        :class="form.difficulty === diff.value ? 'bg-white text-klein-blue shadow-sm' : 'text-gray-400 hover:text-gray-600'"
                     >
-                        {{ diff }}
+                        {{ diff.label }}
                     </button>
                 </div>
             </div>
@@ -77,7 +77,7 @@
             <i class="fa-solid fa-arrow-left"></i> 返回
           </button>
           <h1 class="text-2xl font-black text-gray-900 mb-2 tracking-tight">配置 AI 模型</h1>
-          <p class="text-gray-500 text-sm">你需要提供 API Key 才能使用生成服务。这些信息仅保存在你的本地浏览器中。</p>
+          <p class="text-gray-500 text-sm">你需要提供 API 密钥才能使用生成服务。这些信息仅保存在你的本地浏览器中。</p>
         </div>
 
         <div class="space-y-5 flex-1">
@@ -85,15 +85,15 @@
             <div>
                 <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">服务商</label>
                 <select v-model="form.provider" @change="handleProviderChange" class="glass-input w-full p-4 appearance-none font-medium bg-white">
-                    <option value="openai">OpenAI / DeepSeek / Compatible</option>
-                    <option value="anthropic" disabled>Anthropic (Coming Soon)</option>
-                    <option value="google" disabled>Google (Coming Soon)</option>
+                    <option value="openai">OpenAI / DeepSeek / 兼容接口</option>
+                    <option value="anthropic" disabled>Anthropic（即将支持）</option>
+                    <option value="google" disabled>Google（即将支持）</option>
                 </select>
             </div>
 
             <!-- Base URL -->
             <div v-if="form.provider === 'openai'">
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API Base URL</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API 基础地址</label>
                 <input v-model="form.baseUrl" type="text" class="glass-input w-full p-4 font-mono text-sm" />
                 <div class="flex gap-2 mt-2 overflow-x-auto no-scrollbar pb-1">
                     <button @click="form.baseUrl = 'https://api.openai.com/v1'" class="text-[10px] bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg text-gray-600 font-bold border border-gray-200 transition-colors whitespace-nowrap">
@@ -117,9 +117,9 @@
                 </div>
             </div>
 
-            <!-- API Key -->
+            <!-- API 密钥 -->
             <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API Key <span class="text-red-500">*</span></label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">API 密钥 <span class="text-red-500">*</span></label>
                 <input v-model="form.apiKey" type="password" placeholder="sk-..." class="glass-input w-full p-4 font-mono text-sm" />
             </div>
 
@@ -143,8 +143,10 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useLayoutPath } from '../utils/layout';
 
 const router = useRouter();
+const { withLayout } = useLayoutPath();
 const step = ref(1);
 
 const form = ref({
@@ -163,6 +165,12 @@ const roles = [
     { label: '大学生', value: 'Student', icon: 'fa-solid fa-graduation-cap' },
     { label: '职场人士', value: 'Professional', icon: 'fa-solid fa-briefcase' },
     { label: '面试备考', value: 'Interviewee', icon: 'fa-solid fa-user-tie' }
+];
+
+const difficultyOptions = [
+    { label: '简单', value: 'Easy' },
+    { label: '适中', value: 'Medium' },
+    { label: '困难', value: 'Hard' }
 ];
 
 const progressWidth = computed(() => {
@@ -198,7 +206,7 @@ const finish = () => {
     localStorage.setItem('ai_quiz_onboarded', 'true');
 
     // 跳转首页
-    router.push('/');
+    router.push(withLayout('/'));
 };
 </script>
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col pt-6 px-6">
+  <div :class="isDesktopLayout ? 'flex flex-col pt-8 px-8 max-w-4xl mx-auto w-full' : 'flex flex-col pt-6 px-6'">
     <!-- 标题 -->
     <div class="mb-6 animate-enter flex justify-between items-end">
       <div>
@@ -36,7 +36,7 @@
     </div>
 
     <!-- 错题列表 -->
-    <div v-else class="space-y-4 overflow-y-auto no-scrollbar pb-20">
+    <div v-else class="overflow-y-auto no-scrollbar pb-20" :class="isDesktopLayout ? 'grid grid-cols-2 gap-4' : 'space-y-4'">
         <div 
             v-for="(mistake, index) in quizStore.mistakes" 
             :key="index"
@@ -94,7 +94,8 @@
     </div>
 
     <!-- 错题详情弹窗 -->
-    <div v-if="showDetailModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-fade-in" @click.self="showDetailModal = false">
+    <teleport to="body">
+      <div v-if="showDetailModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-fade-in" @click.self="showDetailModal = false">
         <div class="bg-white rounded-[24px] w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-scale-in overflow-hidden">
             <!-- 顶部 -->
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
@@ -147,7 +148,8 @@
                 </button>
             </div>
         </div>
-    </div>
+      </div>
+    </teleport>
 
     <!-- AI 问答弹窗 -->
     <AiChatModal 
@@ -163,11 +165,14 @@
 import { ref, computed } from 'vue';
 import { useQuizStore } from '../stores/quizStore';
 import { useRouter } from 'vue-router';
+import { useLayoutMode, useLayoutPath } from '../utils/layout';
 import { renderMarkdown } from '../utils/markdown';
 import AiChatModal from '../components/AiChatModal.vue';
 
 const quizStore = useQuizStore();
 const router = useRouter();
+const { withLayout } = useLayoutPath();
+const { isDesktopLayout } = useLayoutMode();
 
 // 状态
 const isSelectionMode = ref(false);
@@ -240,7 +245,7 @@ const startSelfTest = () => {
     if (selectedMistakes.value.length === 0) return;
     
     quizStore.startQuizFromMistakes(selectedMistakes.value);
-    router.push('/quiz');
+    router.push(withLayout('/quiz'));
 };
 
 const openChat = () => {

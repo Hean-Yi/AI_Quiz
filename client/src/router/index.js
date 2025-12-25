@@ -6,7 +6,7 @@ import Mistakes from '../views/Mistakes.vue';
 import Profile from '../views/Profile.vue';
 import Onboarding from '../views/Onboarding.vue';
 
-const routes = [
+const baseRoutes = [
   {
     path: '/',
     name: 'Home',
@@ -39,6 +39,14 @@ const routes = [
   }
 ];
 
+const routes = baseRoutes.map((route) => {
+  const basePath = route.path === '/' ? '' : route.path;
+  return {
+    ...route,
+    alias: [`/desktop${basePath}`, `/mobile${basePath}`]
+  };
+});
+
 const router = createRouter({
   history: createWebHistory(),
   routes
@@ -47,9 +55,12 @@ const router = createRouter({
 // 全局路由守卫：检查是否已完成初始化引导
 router.beforeEach((to, from, next) => {
   const hasOnboarded = localStorage.getItem('ai_quiz_onboarded');
+  const isDesktop = to.path.startsWith('/desktop');
+  const isMobile = to.path.startsWith('/mobile');
+  const prefix = isDesktop ? '/desktop' : isMobile ? '/mobile' : '';
   
   if (!hasOnboarded && to.name !== 'Onboarding') {
-    next({ name: 'Onboarding' });
+    next({ path: prefix ? `${prefix}/onboarding` : '/onboarding' });
   } else {
     next();
   }

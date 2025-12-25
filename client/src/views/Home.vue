@@ -1,23 +1,26 @@
 <template>
-  <div class="flex flex-col pt-6 px-6">
+  <div class="flex flex-col gap-8">
     <!-- 欢迎头 -->
-    <div class="mb-8 animate-enter">
-      <h2 class="text-3xl font-bold text-gray-900 tracking-tight">Hello, {{ userNickname || userRole }} 👋</h2>
-      <p class="text-gray-500 mt-2 text-sm font-medium">准备好开始今天的学习了吗？</p>
+    <div class="animate-enter">
+      <h2 class="font-bold text-gray-900 tracking-tight" :class="isDesktopLayout ? 'text-4xl' : 'text-3xl'">{{ greetingPrefix }}, {{ userNickname || displayRole }}</h2>
+      <p class="text-gray-500 mt-2 font-medium" :class="isDesktopLayout ? 'text-base' : 'text-sm'">准备好开始今天的学习了吗？</p>
     </div>
 
+    <div :class="isDesktopLayout ? 'grid grid-cols-[minmax(0,1fr)_360px] gap-6 xl:gap-8 items-stretch' : 'flex flex-col gap-8'">
+      <div :class="isDesktopLayout ? 'flex flex-col h-full' : 'flex flex-col gap-8'">
+    
     <!-- 上传区域 -->
-    <div v-if="parsedFiles.length === 0" class="glass-card w-full p-8 text-center border-2 border-dashed border-gray-200 hover:border-klein-blue/50 transition-all duration-300 group mb-8 relative overflow-hidden cursor-pointer animate-enter delay-100"
-         :class="{'border-klein-blue bg-blue-50/30': uploadStatus === 'uploading' || uploadStatus === 'processing'}">
+    <div v-if="parsedFiles.length === 0" class="glass-card w-full text-center border-2 border-dashed border-gray-200 hover:border-klein-blue/50 transition-all duration-300 group relative overflow-hidden cursor-pointer animate-enter delay-100 flex flex-col justify-center items-center"
+         :class="[isDesktopLayout ? 'p-10 h-full min-h-[400px]' : 'p-8', { 'border-klein-blue bg-blue-50/30': uploadStatus === 'uploading' || uploadStatus === 'processing' }]">
       
       <!-- 正常状态 -->
       <div v-if="uploadStatus === 'idle'" class="relative z-10" @click="triggerUpload">
         <input type="file" ref="fileInput" class="hidden" accept=".pdf" multiple @change="handleFileUpload" />
-        <div class="w-20 h-20 bg-gradient-to-br from-blue-50 to-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-6 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-          <i class="fa-solid fa-cloud-arrow-up text-3xl text-klein-blue"></i>
+        <div class="bg-gradient-to-br from-blue-50 to-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-8 group-hover:scale-110 group-hover:shadow-md transition-all duration-300" :class="isDesktopLayout ? 'w-32 h-32' : 'w-20 h-20'">
+          <i class="fa-solid fa-cloud-arrow-up text-5xl text-klein-blue"></i>
         </div>
-        <h3 class="text-lg font-bold text-gray-800 mb-2">上传 PDF 课件</h3>
-        <p class="text-xs text-gray-400">支持多文件上传与智能出题</p>
+        <h3 class="font-bold text-gray-800 mb-3" :class="isDesktopLayout ? 'text-2xl' : 'text-lg'">上传 PDF 课件</h3>
+        <p class="text-gray-400" :class="isDesktopLayout ? 'text-base' : 'text-xs'">支持多文件上传与智能出题</p>
       </div>
 
       <!-- 上传中 / 处理中 状态 -->
@@ -45,7 +48,7 @@
     </div>
 
     <!-- 解析成功后的配置区域 -->
-    <div v-if="parsedFiles.length > 0" class="glass-card p-6 animate-enter space-y-6 border-l-4 border-l-green-500">
+    <div v-if="parsedFiles.length > 0" class="glass-card animate-enter space-y-6 border-l-4 border-l-green-500" :class="isDesktopLayout ? 'p-7' : 'p-6'">
       <!-- 文件列表 -->
       <div class="space-y-3 pb-4 border-b border-gray-100">
          <div class="flex justify-between items-center mb-2">
@@ -176,9 +179,109 @@
         {{ isGenerating ? 'AI 正在出题中...' : '开始生成题目' }}
       </button>
     </div>
+    </div>
+
+    <aside v-if="isDesktopLayout" class="flex flex-col gap-5 h-full">
+      <button
+        type="button"
+        @click="openPersonaEditor"
+        class="rounded-2xl border border-gray-200 bg-white p-6 text-left transition-all duration-300 hover:border-gray-300 hover:shadow-lg hover:-translate-y-0.5 group w-full"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-gray-400">工作台</p>
+            <h3 class="text-xl font-semibold text-gray-900 mt-2">{{ userNickname || displayRole }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ userDomain || '通用领域' }} · {{ displayDifficulty }}</p>
+          </div>
+          <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest group-hover:text-klein-blue">Edit</span>
+        </div>
+      </button>
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 w-full">
+        <div class="flex items-center justify-between text-sm text-gray-500">
+          <span>已上传</span>
+          <span class="font-semibold text-gray-900">{{ parsedFiles.length }}</span>
+        </div>
+        <div class="flex items-center justify-between text-sm text-gray-500">
+          <span>题目数</span>
+          <span class="font-semibold text-gray-900">{{ questionQuantity }}</span>
+        </div>
+        <div class="flex items-center justify-between text-sm text-gray-500">
+          <span>已选题型</span>
+          <span class="font-semibold text-gray-900">{{ selectedTypes.length }}</span>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 w-full flex-1">
+        <p class="text-xs uppercase tracking-widest text-gray-400">提示</p>
+        <p class="text-base text-gray-600 mt-3 leading-relaxed">上传后可直接生成测验。桌面端支持多列展示，便于对照题型分布与题目数量。</p>
+      </div>
+    </aside>
+    </div>
+
+    <teleport to="body">
+      <div v-if="showPersonaEditor" class="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter" @click.self="showPersonaEditor = false">
+        <div class="bg-white rounded-[24px] p-6 w-full max-w-md shadow-2xl transform transition-all scale-100">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-gray-800">Edit info</h3>
+            <button @click="showPersonaEditor = false" class="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Nickname</label>
+              <input v-model="personaForm.nickname" type="text" placeholder="e.g. Alex" class="glass-input w-full p-3 text-sm" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Subject</label>
+              <input v-model="personaForm.domain" type="text" placeholder="e.g. Computer Science" class="glass-input w-full p-3 text-sm" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Role</label>
+              <div class="relative">
+                <select v-model="personaForm.role" class="glass-input w-full p-3 pr-10 appearance-none text-sm font-medium">
+                  <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+                </select>
+                <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                  <i class="fa-solid fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">Difficulty</label>
+              <div class="flex bg-gray-100 p-1 rounded-xl">
+                <button
+                  v-for="diff in difficultyOptions"
+                  :key="diff.value"
+                  type="button"
+                  @click="personaForm.difficulty = diff.value"
+                  class="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                  :class="personaForm.difficulty === diff.value ? 'bg-white text-klein-blue shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+                >
+                  {{ diff.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button @click="showPersonaEditor = false" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition-colors">
+              Cancel
+            </button>
+            <button @click="savePersona" class="primary-btn flex-1 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
 
     <!-- 错误详情弹窗 -->
-    <div v-if="showErrorModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
+    <teleport to="body">
+      <div v-if="showErrorModal" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-enter">
         <div class="bg-white rounded-[24px] p-6 w-full max-w-md shadow-2xl transform transition-all scale-100 flex flex-col max-h-[80vh]">
             <div class="flex items-center gap-3 mb-4 text-red-500">
                 <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
@@ -206,9 +309,11 @@
                 </button>
             </div>
         </div>
-    </div>
+      </div>
+    </teleport>
 
     <!-- 通用 Alert 弹窗 -->
+
     <ConfirmModal
         v-model:visible="alertState.visible"
         :title="alertState.title"
@@ -235,6 +340,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
+import { useLayoutMode, useLayoutPath } from '../utils/layout';
 import { useQuizStore } from '../stores/quizStore';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import PdfPreviewModal from '../components/PdfPreviewModal.vue';
@@ -244,6 +350,8 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 const PdfViewer = registerPlugin('PdfViewer');
 
 const router = useRouter();
+const { withLayout } = useLayoutPath();
+const { isDesktopLayout } = useLayoutMode();
 const quizStore = useQuizStore();
 const fileInput = ref(null);
 
@@ -282,10 +390,80 @@ const handleAlertConfirm = () => {
 // 用户信息
 const userNickname = ref('');
 const userRole = ref('Student');
+const userDomain = ref('');
+const userDifficulty = ref('Medium');
+const greetingPrefix = computed(() => '你好');
+const roleLabels = {
+    Beginner: '新手小白',
+    Student: '大学生',
+    Professional: '职场人士',
+    Interviewee: '面试备考'
+};
+const difficultyLabels = {
+    Easy: '简单',
+    Medium: '适中',
+    Hard: '困难'
+};
+const displayRole = computed(() => roleLabels[userRole.value] || userRole.value);
+const displayDifficulty = computed(() => difficultyLabels[userDifficulty.value] || userDifficulty.value);
+const roleOptions = [
+    { value: 'Beginner', label: roleLabels.Beginner },
+    { value: 'Student', label: roleLabels.Student },
+    { value: 'Professional', label: roleLabels.Professional },
+    { value: 'Interviewee', label: roleLabels.Interviewee }
+];
+const difficultyOptions = [
+    { value: 'Easy', label: difficultyLabels.Easy },
+    { value: 'Medium', label: difficultyLabels.Medium },
+    { value: 'Hard', label: difficultyLabels.Hard }
+];
+const showPersonaEditor = ref(false);
+const personaForm = ref({
+    nickname: '',
+    domain: '',
+    role: 'Student',
+    difficulty: 'Medium'
+});
+
+const syncPersonaForm = () => {
+    personaForm.value = {
+        nickname: userNickname.value,
+        domain: userDomain.value,
+        role: userRole.value,
+        difficulty: userDifficulty.value
+    };
+};
+
+const openPersonaEditor = () => {
+    syncPersonaForm();
+    showPersonaEditor.value = true;
+};
+
+const savePersona = () => {
+    const nickname = (personaForm.value.nickname || '').trim();
+    const domain = (personaForm.value.domain || '').trim();
+    const role = personaForm.value.role || 'Student';
+    const difficulty = personaForm.value.difficulty || 'Medium';
+
+    userNickname.value = nickname;
+    userDomain.value = domain;
+    userRole.value = role;
+    userDifficulty.value = difficulty;
+
+    localStorage.setItem('ai_quiz_nickname', nickname);
+    localStorage.setItem('ai_quiz_domain', domain);
+    localStorage.setItem('ai_quiz_role', role);
+    localStorage.setItem('ai_quiz_difficulty', difficulty);
+
+    showPersonaEditor.value = false;
+};
 
 onMounted(() => {
     userNickname.value = localStorage.getItem('ai_quiz_nickname') || '';
     userRole.value = localStorage.getItem('ai_quiz_role') || 'Student';
+    userDomain.value = localStorage.getItem('ai_quiz_domain') || '';
+    userDifficulty.value = localStorage.getItem('ai_quiz_difficulty') || 'Medium';
+    syncPersonaForm();
 
     // 恢复已上传的文件 (如果存在)
     if (quizStore.currentPdfList && quizStore.currentPdfList.length > 0) {
@@ -335,9 +513,9 @@ const questionTypes = [
 ];
 
 const statusText = computed(() => {
-  if (uploadStatus.value === 'uploading') return 'UPLOADING';
-  if (uploadStatus.value === 'processing') return 'PROCESSING';
-  return 'READY';
+  if (uploadStatus.value === 'uploading') return '上传中';
+  if (uploadStatus.value === 'processing') return '解析中';
+  return '就绪';
 });
 
 const totalCount = computed(() => {
@@ -458,18 +636,30 @@ const removeFile = (index) => {
 const resolvePdfData = async (file) => {
     if (!file) return null;
     if (file.localPath) {
-        const res = await Filesystem.readFile({ path: normalizePath(file.localPath) });
-        return base64ToUint8(res.data);
+        try {
+            const res = await Filesystem.readFile({ path: normalizePath(file.localPath) });
+            return base64ToUint8(res.data);
+        } catch (e) {
+            console.warn('Local cache read failed, fallback to preview URL', e);
+        }
     }
     if (file.previewUrl) {
-        const resp = await fetch(file.previewUrl);
-        const buf = await resp.arrayBuffer();
-        return new Uint8Array(buf);
+        try {
+            const resp = await fetch(file.previewUrl);
+            const buf = await resp.arrayBuffer();
+            return new Uint8Array(buf);
+        } catch (e) {
+            console.warn('Preview URL load failed, fallback to server file', e);
+        }
     }
     if (file.pdfId) {
-        const resp = await fetch(`/uploads/${file.pdfId}`);
-        const buf = await resp.arrayBuffer();
-        return new Uint8Array(buf);
+        try {
+            const resp = await fetch(`/uploads/${file.pdfId}`);
+            const buf = await resp.arrayBuffer();
+            return new Uint8Array(buf);
+        } catch (e) {
+            console.warn('Server PDF load failed', e);
+        }
     }
     return null;
 };
@@ -587,7 +777,8 @@ const handleFileUpload = async (event) => {
 
       const newFiles = response.data.data.map(f => ({
           ...f,
-          localPath: localPreviewsMap[f.originalName] || ''
+          localPath: localPreviewsMap[f.originalName] || '',
+          previewUrl: localPreviews[f.originalName] || ''
       }));
       // 简单的去重 (根据 originalName)
       const existingNames = new Set(parsedFiles.value.map(f => f.originalName));
@@ -635,7 +826,7 @@ const generateQuiz = async () => {
 
     if (!apiKey) {
         showAlert('请先在设置页配置 API Key', 'warning', '未配置 API Key', '去设置', () => {
-            router.push('/settings');
+            router.push(withLayout('/settings'));
         });
         return;
     }
@@ -667,7 +858,7 @@ const generateQuiz = async () => {
             // 存入 Store
             quizStore.setQuestions(res.data.data, parsedFiles.value[0], parsedFiles.value);
             // 跳转
-            router.push('/quiz');
+            router.push(withLayout('/quiz'));
         }
     } catch (error) {
         console.error('Generate failed:', error);

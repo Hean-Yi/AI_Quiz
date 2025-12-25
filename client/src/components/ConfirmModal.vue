@@ -1,42 +1,44 @@
 <template>
-    <div v-if="visible" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-fade-in" @click.self="handleOverlayClick">
-        <div class="bg-white w-full max-w-xs rounded-[24px] shadow-2xl flex flex-col overflow-hidden animate-scale-in">
-            <div class="p-6 text-center">
-                <div v-if="type === 'warning'" class="w-12 h-12 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-exclamation text-xl text-amber-500"></i>
-                </div>
-                <div v-else-if="type === 'success'" class="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-check text-xl text-green-500"></i>
-                </div>
-                <div v-else-if="type === 'error'" class="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-xmark text-xl text-red-500"></i>
-                </div>
-                <div v-else class="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-info text-xl text-klein-blue"></i>
+    <teleport to="body">
+        <div v-if="visible" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-fade-in" @click.self="handleOverlayClick">
+            <div class="bg-white w-full max-w-xs rounded-[24px] shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+                <div class="p-6 text-center">
+                    <div v-if="type === 'warning'" class="w-12 h-12 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-exclamation text-xl text-amber-500"></i>
+                    </div>
+                    <div v-else-if="type === 'success'" class="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-check text-xl text-green-500"></i>
+                    </div>
+                    <div v-else-if="type === 'error'" class="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-xmark text-xl text-red-500"></i>
+                    </div>
+                    <div v-else class="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-info text-xl text-klein-blue"></i>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">{{ title }}</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">{{ message }}</p>
                 </div>
 
-                <h3 class="text-lg font-bold text-gray-900 mb-2">{{ title }}</h3>
-                <p class="text-sm text-gray-500 leading-relaxed">{{ message }}</p>
-            </div>
-
-            <div class="flex border-t border-gray-100">
-                <button 
-                    v-if="showCancel"
-                    @click="onCancel" 
-                    class="flex-1 py-4 text-sm font-bold text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors border-r border-gray-100"
-                >
-                    {{ cancelText }}
-                </button>
-                <button 
-                    @click="onConfirm" 
-                    class="flex-1 py-4 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                    :class="confirmButtonClass"
-                >
-                    {{ confirmText }}
-                </button>
+                <div class="flex border-t border-gray-100">
+                    <button 
+                        v-if="showCancel"
+                        @click="onCancel" 
+                        class="flex-1 py-4 text-sm font-bold text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors border-r border-gray-100"
+                    >
+                        {{ cancelText }}
+                    </button>
+                    <button 
+                        @click="onConfirm" 
+                        class="flex-1 py-4 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                        :class="confirmButtonClass"
+                    >
+                        {{ confirmText }}
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    </teleport>
 </template>
 
 <script setup>
