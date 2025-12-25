@@ -39,9 +39,16 @@ class OpenAICompatibleService {
         });
     }
 
+    /**
+     * 生成测验题目
+     * @param {string} prompt - 完整的提示词
+     * @returns {Promise<Array>} - 返回题目数组
+     */
     async generateQuiz(prompt) {
         try {
             // 强制要求 JSON 格式
+            // 提示模型必须返回合法的 JSON 对象，包含 "questions" 数组
+            // 明确字段结构：type, content, options, correctAnswer, explanation
             const finalPrompt = prompt + `\n\nIMPORTANT: You must respond with a valid JSON object containing a "questions" array. Do not include markdown formatting (like \`\`\`json). Each object in the array should have: "type" (string), "content" (string), "options" (array of strings, if applicable), "correctAnswer" (string), "explanation" (string).`;
 
             let completion;
