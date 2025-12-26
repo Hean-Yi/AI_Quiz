@@ -52,3 +52,5 @@ AGENTS.md
 *.apk
 client/.env.production
 client/android/app/src/main/res/xml/network_security_config.xml
+
+PROJECT_ANALYSIS_zh-CN.md
